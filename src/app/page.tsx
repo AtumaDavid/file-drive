@@ -45,18 +45,18 @@ export default function Home() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-24">
       {/* sign out */}
-      {/* <SignedIn>
+      <SignedIn>
         <SignOutButton>
           <Button>sign out</Button>
         </SignOutButton>
-      </SignedIn> */}
+      </SignedIn>
 
       {/* sign in */}
-      {/* <SignedOut>
+      <SignedOut>
         <SignInButton mode="modal">
           <Button>sign in</Button>
         </SignInButton>
-      </SignedOut> */}
+      </SignedOut>
 
       {files?.map((file) => {
         return <div key={file._id}>{file.name}</div>;
