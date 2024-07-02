@@ -10,6 +10,7 @@ http.route({
   method: "POST", // Specify the HTTP method as POST
   handler: httpAction(async (ctx, request) => {
     // Extract the payload and headers from the request
+    // Extract and process webhook payload
     const payloadString = await request.text();
     const headerPayload = request.headers;
 
