@@ -17,7 +17,6 @@ import { useForm } from "react-hook-form";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -26,122 +25,152 @@ import {
 import { Input } from "@/components/ui/input";
 
 const formSchema = z.object({
-  title: z.string().min(2).max(200),
+  title: z.string().min(1).max(200),
+  file: z
+    .custom<File | null>((val) => val instanceof File || val === null)
+    .refine((files) => files !== null, { message: "File is required" }),
 });
 
 export default function Home() {
-  // Get the current organization and user
-  const organization = useOrganization(); //specific
+  const organization = useOrganization();
   const user = useUser();
+  const generateUploadUrl = useMutation(api.files.generateUploadUrl);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       title: "",
-      file: z.any(),
+      file: undefined,
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    // Do something with the form values.
-    // ✅ This will be type-safe and validated.
-    console.log(values);
+  async function onSubmit(
+    values: z.infer<typeof formSchema>,
+    orgId: string | undefined
+  ) {
+    if (!orgId) return;
+    console.log(values); // Log the form values
+    console.log(values.file);
+
+    if (!values.file) {
+      console.error("File is required");
+      return;
+    }
+
+    try {
+      const postUrl = await generateUploadUrl();
+
+      const formData = new FormData();
+      formData.append("file", values.file);
+
+      const result = await fetch(postUrl, {
+        method: "POST",
+        headers: { "Content-Type": values.file.type },
+        body: formData,
+      });
+
+      if (!result.ok) {
+        throw new Error("Failed to upload file");
+      }
+
+      const responseData = await result.json();
+      const storageId = responseData.storageId;
+
+      // Create file with required parameters
+      createFile({
+        name: values.title,
+        // type: "image", // Replace with appropriate type (image, csv, pdf, etc.)
+        orgId,
+        fileId: storageId, // Assuming storageId is the fileId
+      });
+
+      console.log("File uploaded successfully and file created.");
+      // Handle success logic here
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      // Handle error logic here
+    }
   }
 
-  // Initialize orgId as undefined
-  // By allowing orgId to be either a string or undefined, the code can handle situations where the organization ID might not yet be available.
-  // For instance, it could be waiting for some asynchronous operation (like fetching data) to complete.
   let orgId: string | undefined;
 
-  // When both organization and user data are loaded, set orgId to either the organization ID or user ID
   if (organization.isLoaded && user.isLoaded) {
-    // Set the organization ID to either the organization ID or user ID
     orgId = organization.organization?.id ?? user.user?.id;
   }
 
-  // Query files from the Convex API, but only if organization and user data are loaded and orgId is defined
   const files = useQuery(
     api.files.getFiles,
-    // orgId: This variable holds the ID of the organization or user, depending on which one is available (organization.organization?.id or user.user?.id).
-    // It's used here to conditionally pass as a parameter to the query.
-
-    // { orgId }: If all conditions (organization.isLoaded && user.isLoaded && orgId) are met,
-    // { orgId } becomes an object containing orgId,
-    // which is used as a parameter in the getFiles query.
     organization.isLoaded && user.isLoaded && orgId ? { orgId } : "skip"
   );
 
-  // Create a mutation hook for creating a file
   const createFile = useMutation(api.files.createFile);
 
   return (
-    <main className="container, mx-auto pt-12">
+    <main className="container mx-auto pt-12">
       <div className="flex justify-between items-center">
-        <h1 className="text-4xl, font-bold">Yout files</h1>
+        <h1 className="text-4xl font-bold">Your files</h1>
         <Dialog>
           <DialogTrigger asChild>
-            <Button
-            // onClick={() => {
-            //   if (!orgId) return;
-            //   createFile({
-            //     name: "hello world",
-            //     orgId,
-            //   });
-            // }}
-            >
-              Upload file
-            </Button>
+            <Button>Upload file</Button>
           </DialogTrigger>
           <DialogContent>
-            <DialogHeader>
+            <DialogHeader className="mb-8">
               <DialogTitle>Upload your file here</DialogTitle>
-              <DialogDescription>
-                <Form {...form}>
-                  <form
-                    onSubmit={form.handleSubmit(onSubmit)}
-                    className="space-y-8"
-                  >
-                    <FormField
-                      control={form.control}
-                      name="title"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Title</FormLabel>
-                          <FormControl>
-                            <Input type="file" {...field} />
-                          </FormControl>
-                          <FormDescription>
-                            The title of your field
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="file"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Title</FormLabel>
-                          <FormControl>
-                            <Input placeholder="shadcn" {...field} />
-                          </FormControl>
-                          <FormDescription>your file</FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <Button type="submit">Submit</Button>
-                  </form>
-                </Form>
-              </DialogDescription>
+              <DialogDescription>files </DialogDescription>
+              {/* <DialogDescription> */}
+              <Form {...form}>
+                <form
+                  onSubmit={form.handleSubmit(onSubmit)}
+                  className="space-y-8"
+                >
+                  <FormField
+                    control={form.control}
+                    name="title"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Title</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="The title of your field"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="file"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>File</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="file"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                field.onChange(file);
+                              }
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <Button type="submit">Submit</Button>
+                </form>
+              </Form>
+              {/* </DialogDescription> */}
             </DialogHeader>
           </DialogContent>
         </Dialog>
       </div>
-      {files?.map((file) => {
-        return <div key={file._id}>{file.name}</div>;
-      })}
+      {files?.map((file) => <div key={file._id}>{file.name}</div>)}
     </main>
   );
 }
