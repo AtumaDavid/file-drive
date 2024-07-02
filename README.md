@@ -116,18 +116,42 @@
 3. **users.ts**: This file contains Convex server-side functions for handling user data:
 
    - _getUser_: Fetches a user by their token identifier.
-   - _createUser_: Creates a new user in the database.
-   - _updateUser_: Updates an existing user's information.
-   - _addOrgIdToUser_: Adds an organization ID to a user's membership.
-   - _updateRoleInOrgForUser_: Updates a user's role in an organization.
-   - _getUserProfile_: Fetches a user's profile by their ID.
-   - _getMe_: Fetches the currently authenticated user.
+     - **getUsers**
 
-4. **clerk.ts**: This file handles the verification of Clerk webhooks:
+```javascript
+export async function getUser(
+  ctx: QueryCtx | MutationCtx,
+  tokenIdentifier: string
+) {
+  // Querying the users table using an index by tokenIdentifier
+  const user = await ctx.db
+    .query("users")
+    .withIndex("by_tokenIdentifier", (q) =>
+      q.eq("tokenIdentifier", tokenIdentifier)
+    )
+    .first();
+
+  // If the user is not found, throw an error
+  if (!user) {
+    throw new ConvexError("expected user to be defined");
+  }
+
+  return user;
+}
+```
+
+- _createUser_: Creates a new user in the database.
+- _updateUser_: Updates an existing user's information.
+- _addOrgIdToUser_: Adds an organization ID to a user's membership.
+- _updateRoleInOrgForUser_: Updates a user's role in an organization.
+- _getUserProfile_: Fetches a user's profile by their ID.
+- _getMe_: Fetches the currently authenticated user.
+
+1. **clerk.ts**: This file handles the verification of Clerk webhooks:
 
    - _fulfill_: Verifies the webhook payload using the svix library and returns the parsed payload.
 
-5. **files.ts**: This file contains Convex server-side functions for handling file data:
+2. **files.ts**: This file contains Convex server-side functions for handling file data:
 
    - _generateUploadUrl_: Generates a URL for uploading files.
    - _hasAccessToOrg_: Checks if a user has access to an organization.
@@ -139,7 +163,7 @@
    - _toggleFavorite_: Toggles a file's favorite status.
    - _getAllFavorites_: Fetches all favorite files for a user.
 
-6. . page.tsx
+3. . page.tsx
    This is the client-side code (React component) for the main page of the application:
    Home Component:
    Uses useOrganization and useUser hooks from Clerk to get the current organization and user.
@@ -261,6 +285,7 @@ switch (result.type) {
 ```
 
 - **Benefits**:
+
   - _Automation_: Webhooks automate the process of updating the Convex database, removing the need for manual synchronization.
   - _Accuracy_: Ensures that user and organization data in Convex is always in sync with Clerk.
   - _Real-time Updates_: Provides real-time updates to your application, improving the responsiveness and reliability of user-related operations.

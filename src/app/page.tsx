@@ -1,20 +1,52 @@
 "use client";
 import { Button } from "@/components/ui/button";
-import {
-  SignInButton,
-  SignOutButton,
-  SignedIn,
-  SignedOut,
-  useOrganization,
-  useUser,
-} from "@clerk/nextjs";
+import { useOrganization, useUser } from "@clerk/nextjs";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+
+const formSchema = z.object({
+  title: z.string().min(2).max(200),
+});
 
 export default function Home() {
   // Get the current organization and user
   const organization = useOrganization(); //specific
   const user = useUser();
+
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      title: "",
+      file: z.any(),
+    },
+  });
+
+  function onSubmit(values: z.infer<typeof formSchema>) {
+    // Do something with the form values.
+    // ✅ This will be type-safe and validated.
+    console.log(values);
+  }
 
   // Initialize orgId as undefined
   // By allowing orgId to be either a string or undefined, the code can handle situations where the organization ID might not yet be available.
@@ -40,40 +72,76 @@ export default function Home() {
   );
 
   // Create a mutation hook for creating a file
-  const createFile = useMutation(api.files.creatFile);
+  const createFile = useMutation(api.files.createFile);
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      {/* sign out */}
-      <SignedIn>
-        <SignOutButton>
-          <Button>sign out</Button>
-        </SignOutButton>
-      </SignedIn>
-
-      {/* sign in */}
-      <SignedOut>
-        <SignInButton mode="modal">
-          <Button>sign in</Button>
-        </SignInButton>
-      </SignedOut>
-
+    <main className="container, mx-auto pt-12">
+      <div className="flex justify-between items-center">
+        <h1 className="text-4xl, font-bold">Yout files</h1>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button
+            // onClick={() => {
+            //   if (!orgId) return;
+            //   createFile({
+            //     name: "hello world",
+            //     orgId,
+            //   });
+            // }}
+            >
+              Upload file
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Upload your file here</DialogTitle>
+              <DialogDescription>
+                <Form {...form}>
+                  <form
+                    onSubmit={form.handleSubmit(onSubmit)}
+                    className="space-y-8"
+                  >
+                    <FormField
+                      control={form.control}
+                      name="title"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Title</FormLabel>
+                          <FormControl>
+                            <Input type="file" {...field} />
+                          </FormControl>
+                          <FormDescription>
+                            The title of your field
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="file"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Title</FormLabel>
+                          <FormControl>
+                            <Input placeholder="shadcn" {...field} />
+                          </FormControl>
+                          <FormDescription>your file</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <Button type="submit">Submit</Button>
+                  </form>
+                </Form>
+              </DialogDescription>
+            </DialogHeader>
+          </DialogContent>
+        </Dialog>
+      </div>
       {files?.map((file) => {
         return <div key={file._id}>{file.name}</div>;
       })}
-
-      <Button
-        onClick={() => {
-          if (!orgId) return;
-          createFile({
-            name: "hello world",
-            orgId,
-          });
-        }}
-      >
-        Click me
-        {/* will be added to comvex db */}
-      </Button>
     </main>
   );
 }
