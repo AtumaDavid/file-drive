@@ -44,6 +44,8 @@ export default function Home() {
     },
   });
 
+  const createFile = useMutation(api.files.createFile);
+
   async function onSubmit(
     values: z.infer<typeof formSchema>,
     orgId: string | undefined
@@ -76,12 +78,11 @@ export default function Home() {
       const responseData = await result.json();
       const storageId = responseData.storageId;
 
-      // Create file with required parameters
-      createFile({
+      await createFile({
         name: values.title,
-        // type: "image", // Replace with appropriate type (image, csv, pdf, etc.)
         orgId,
-        fileId: storageId, // Assuming storageId is the fileId
+        fileId: storageId,
+        type: "image",
       });
 
       console.log("File uploaded successfully and file created.");
@@ -98,12 +99,12 @@ export default function Home() {
     orgId = organization.organization?.id ?? user.user?.id;
   }
 
+  // console.log("Organization ID:", orgId);
+
   const files = useQuery(
     api.files.getFiles,
     organization.isLoaded && user.isLoaded && orgId ? { orgId } : "skip"
   );
-
-  const createFile = useMutation(api.files.createFile);
 
   return (
     <main className="container mx-auto pt-12">
@@ -120,7 +121,9 @@ export default function Home() {
               {/* <DialogDescription> */}
               <Form {...form}>
                 <form
-                  onSubmit={form.handleSubmit(onSubmit)}
+                  onSubmit={form.handleSubmit((values) =>
+                    onSubmit(values, orgId)
+                  )}
                   className="space-y-8"
                 >
                   <FormField
